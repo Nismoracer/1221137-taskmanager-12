@@ -1,15 +1,18 @@
 import {createElement} from "../util.js";
 
-const createLoadButton = () =>
-  `<button class="load-more" type="button">load more</button>`;
+const createNoTaskTemplate = () => {
+  return `<p class="board__no-tasks">
+    Click «ADD NEW TASK» in menu to create your first task
+  </p>`;
+};
 
-export default class LoadMoreButton {
+export default class NoTask {
   constructor() {
     this._element = null;
   }
 
   getTemplate() {
-    return createLoadButton();
+    return createNoTaskTemplate();
   }
 
   getElement() {
