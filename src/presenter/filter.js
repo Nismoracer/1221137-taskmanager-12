@@ -9,7 +9,6 @@ export default class Filter {
     this._filterModel = filterModel;
     this._tasksModel = tasksModel;
     this._currentFilter = null;
-
     this._filterComponent = null;
 
     this._handleModelEvent = this._handleModelEvent.bind(this);
