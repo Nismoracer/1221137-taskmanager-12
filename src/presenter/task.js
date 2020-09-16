@@ -9,19 +9,25 @@ const Mode = {
   EDITING: `EDITING`
 };
 
+export const State = {
+  SAVING: `SAVING`,
+  DELETING: `DELETING`,
+  ABORTING: `ABORTING`
+};
+
 export default class Task {
   constructor(taskListContainer, changeData, changeMode) {
     this._taskListContainer = taskListContainer;
-    this._mode = Mode.DEFAULT;
-
-    this._taskComponent = null;
-    this._taskEditComponent = null;
     this._changeData = changeData;
     this._changeMode = changeMode;
 
+    this._taskComponent = null;
+    this._taskEditComponent = null;
+    this._mode = Mode.DEFAULT;
+
+    this._handleEditClick = this._handleEditClick.bind(this);
     this._handleFavoriteClick = this._handleFavoriteClick.bind(this);
     this._handleArchiveClick = this._handleArchiveClick.bind(this);
-    this._handleEditClick = this._handleEditClick.bind(this);
     this._handleFormSubmit = this._handleFormSubmit.bind(this);
     this._handleDeleteClick = this._handleDeleteClick.bind(this);
     this._escKeyDownHandler = this._escKeyDownHandler.bind(this);
@@ -32,6 +38,7 @@ export default class Task {
 
     const prevTaskComponent = this._taskComponent;
     const prevTaskEditComponent = this._taskEditComponent;
+
     this._taskComponent = new TaskView(task);
     this._taskEditComponent = new TaskEditView(task);
 
@@ -51,11 +58,17 @@ export default class Task {
     }
 
     if (this._mode === Mode.EDITING) {
-      replace(this._taskEditComponent, prevTaskEditComponent);
+      replace(this._taskComponent, prevTaskEditComponent);
+      this._mode = Mode.DEFAULT;
     }
 
     remove(prevTaskComponent);
     remove(prevTaskEditComponent);
+  }
+
+  destroy() {
+    remove(this._taskComponent);
+    remove(this._taskEditComponent);
   }
 
   resetView() {
@@ -64,9 +77,33 @@ export default class Task {
     }
   }
 
-  destroy() {
-    remove(this._taskComponent);
-    remove(this._taskEditComponent);
+  setViewState(state) {
+    const resetFormState = () => {
+      this._taskEditComponent.updateData({
+        isDisabled: false,
+        isSaving: false,
+        isDeleting: false
+      });
+    };
+
+    switch (state) {
+      case State.SAVING:
+        this._taskEditComponent.updateData({
+          isDisabled: true,
+          isSaving: true
+        });
+        break;
+      case State.DELETING:
+        this._taskEditComponent.updateData({
+          isDisabled: true,
+          isDeleting: true
+        });
+        break;
+      case State.ABORTING:
+        this._taskComponent.shake(resetFormState);
+        this._taskEditComponent.shake(resetFormState);
+        break;
+    }
   }
 
   _replaceCardToForm() {
@@ -123,6 +160,8 @@ export default class Task {
   }
 
   _handleFormSubmit(update) {
+    // Проверяем, поменялись ли в задаче данные, которые попадают под фильтрацию,
+    // а значит требуют перерисовки списка - если таких нет, это PATCH-обновление
     const isMinorUpdate =
       !isDatesEqual(this._task.dueDate, update.dueDate) ||
       isTaskRepeating(this._task.repeating) !== isTaskRepeating(update.repeating);
@@ -132,7 +171,6 @@ export default class Task {
         isMinorUpdate ? UpdateType.MINOR : UpdateType.PATCH,
         update
     );
-    this._replaceFormToCard();
   }
 
   _handleDeleteClick(task) {
