@@ -3,28 +3,26 @@ import TasksModel from "./model/tasks.js";
 import FilterModel from "./model/filter.js";
 import StatisticsView from "./view/statistics.js";
 
-import {generateTask} from "./mock/task.js";
 import {MenuItem, UpdateType, FilterType} from "./const.js";
 import BoardPresenter from "./presenter/board.js";
 import FilterPresenter from "./presenter/filter.js";
 import {render, RenderPosition, remove} from "./utils/render.js";
+import Api from "./api.js";
 
-const TASKS_NUM = 20;
+const AUTHORIZATION = `Basic hS2sd3dfSwsf1sa2j`;
+const END_POINT = `https://12.ecmascript.pages.academy/task-manager`;
 
-const tasks = new Array(TASKS_NUM).fill().map(generateTask);
+const siteMainElement = document.querySelector(`.main`);
+const siteHeaderElement = siteMainElement.querySelector(`.main__control`);
+
+const api = new Api(END_POINT, AUTHORIZATION);
 
 const tasksModel = new TasksModel();
-tasksModel.setTasks(tasks);
 const filterModel = new FilterModel();
 
-const siteMain = document.querySelector(`.main`);
-const siteHeader = siteMain.querySelector(`.main__control`);
 const siteMenuComponent = new MenuView();
-
-render(siteHeader, siteMenuComponent, RenderPosition.BEFOREEND);
-
-const boardPresenter = new BoardPresenter(siteMain, tasksModel, filterModel);
-const filterPresenter = new FilterPresenter(siteMain, filterModel, tasksModel);
+const boardPresenter = new BoardPresenter(siteMainElement, tasksModel, filterModel, api);
+const filterPresenter = new FilterPresenter(siteMainElement, filterModel, tasksModel);
 
 const handleTaskNewFormClose = () => {
   siteMenuComponent.getElement().querySelector(`[value=${MenuItem.TASKS}]`).disabled = false;
@@ -50,12 +48,22 @@ const handleSiteMenuClick = (menuItem) => {
     case MenuItem.STATISTICS:
       boardPresenter.destroy();
       statisticsComponent = new StatisticsView(tasksModel.getTasks());
-      render(siteMain, statisticsComponent, RenderPosition.BEFOREEND);
+      render(siteMainElement, statisticsComponent, RenderPosition.BEFOREEND);
       break;
   }
 };
 
-siteMenuComponent.setMenuClickHandler(handleSiteMenuClick);
-
 filterPresenter.init();
 boardPresenter.init();
+
+api.getTasks()
+  .then((tasks) => {
+    tasksModel.setTasks(UpdateType.INIT, tasks);
+    render(siteHeaderElement, siteMenuComponent, RenderPosition.BEFOREEND);
+    siteMenuComponent.setMenuClickHandler(handleSiteMenuClick);
+  })
+  .catch(() => {
+    tasksModel.setTasks(UpdateType.INIT, []);
+    render(siteHeaderElement, siteMenuComponent, RenderPosition.BEFOREEND);
+    siteMenuComponent.setMenuClickHandler(handleSiteMenuClick);
+  });
